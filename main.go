@@ -43,9 +43,25 @@ func main() {
 		panic(err)
 	}
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	game := breakout.NewGame(WINDOW_WIDTH, WINDOW_HEIGHT)
+
+	window.SetKeyCallback(
+		func(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+			if key == glfw.KeyEscape {
+				window.SetShouldClose(true)
+			}
+
+			if action == glfw.Press {
+				game.Keys[key] = true
+			} else if action == glfw.Release {
+				game.Keys[key] = false
+			}
+		},
+	)
 
 	lastFrame := time.Now()
 
