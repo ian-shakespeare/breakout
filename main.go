@@ -3,6 +3,9 @@ package main
 import (
 	breakout "breakout/src"
 	"runtime"
+	"time"
+
+	_ "image/png"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
@@ -41,17 +44,24 @@ func main() {
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
-	game := breakout.NewGame(WINDOW_WIDTH, WINDOW_HEIGHT)
-	game.Init()
+  game := breakout.NewGame(WINDOW_WIDTH, WINDOW_HEIGHT)
+
+  lastFrame := time.Now()
 
 	for !window.ShouldClose() {
-		game.ProcessInput(0)
+    now := time.Now()
+    deltaTime := now.Sub(lastFrame)
+    lastFrame = now
+
+    game.ProcessInput(deltaTime)
+    game.Update(deltaTime)
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
-
-		game.Render()
+    game.Render()
 
 		window.SwapBuffers()
 		glfw.PollEvents()
 	}
+
+  game.Delete()
 }

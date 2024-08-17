@@ -2,7 +2,6 @@ package breakout
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
@@ -10,14 +9,10 @@ import (
 )
 
 type Shader struct {
-	id uint32
+	Id uint32
 }
 
 func NewShader(vertexSource string, fragmentSource string) (Shader, error) {
-	id := gl.CreateProgram()
-
-	fmt.Printf("VERTEX:\n%s\n\nFRAG:\n%s\n", vertexSource, fragmentSource)
-
 	vertexShader, err := compileShader(vertexSource, gl.VERTEX_SHADER)
 	if err != nil {
 		return Shader{}, err
@@ -27,20 +22,21 @@ func NewShader(vertexSource string, fragmentSource string) (Shader, error) {
 		return Shader{}, err
 	}
 
-	gl.AttachShader(id, vertexShader)
-	gl.AttachShader(id, fragmentShader)
+	program := gl.CreateProgram()
 
-	gl.LinkProgram(id)
+	gl.AttachShader(program, vertexShader)
+	gl.AttachShader(program, fragmentShader)
+	gl.LinkProgram(program)
 
 	var linkSuccess int32
-	gl.GetProgramiv(id, gl.LINK_STATUS, &linkSuccess)
+	gl.GetProgramiv(program, gl.LINK_STATUS, &linkSuccess)
 
 	if linkSuccess == gl.FALSE {
 		var logLength int32
-		gl.GetProgramiv(id, gl.INFO_LOG_LENGTH, &logLength)
+		gl.GetProgramiv(program, gl.INFO_LOG_LENGTH, &logLength)
 
 		infoLog := strings.Repeat("\x00", int(logLength+1))
-		gl.GetProgramInfoLog(id, logLength, nil, gl.Str(infoLog))
+		gl.GetProgramInfoLog(program, logLength, nil, gl.Str(infoLog))
 
 		return Shader{}, errors.New(infoLog)
 	}
@@ -48,29 +44,29 @@ func NewShader(vertexSource string, fragmentSource string) (Shader, error) {
 	gl.DeleteShader(vertexShader)
 	gl.DeleteShader(fragmentShader)
 
-	return Shader{id}, nil
+	return Shader{Id: program}, nil
 }
 
 func (s Shader) Delete() {
-	gl.DeleteProgram(s.id)
+	gl.DeleteProgram(s.Id)
 }
 
 func (s Shader) Use() {
-	gl.UseProgram(s.id)
+	gl.UseProgram(s.Id)
 }
 
 func (s Shader) SetMatrix4(name string, mat mgl32.Mat4) {
-	uniform := gl.GetUniformLocation(s.id, gl.Str(name+"\x00"))
+	uniform := gl.GetUniformLocation(s.Id, gl.Str(name+"\x00"))
 	gl.UniformMatrix4fv(uniform, 1, false, &mat[0])
 }
 
 func (s Shader) SetVector3f(name string, vec mgl32.Vec3) {
-	uniform := gl.GetUniformLocation(s.id, gl.Str(name+"\x00"))
+	uniform := gl.GetUniformLocation(s.Id, gl.Str(name+"\x00"))
 	gl.Uniform3f(uniform, vec.X(), vec.Y(), vec.Z())
 }
 
 func (s Shader) SetInteger(name string, value int32) {
-	uniform := gl.GetUniformLocation(s.id, gl.Str(name+"\x00"))
+	uniform := gl.GetUniformLocation(s.Id, gl.Str(name+"\x00"))
 	gl.Uniform1i(uniform, value)
 }
 

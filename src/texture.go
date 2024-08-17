@@ -8,7 +8,7 @@ import (
 )
 
 type Texture struct {
-	id uint32
+	Id uint32
 }
 
 func NewTexture(img image.Image) Texture {
@@ -18,10 +18,10 @@ func NewTexture(img image.Image) Texture {
 	}
 	draw.Draw(rgba, rgba.Bounds(), img, image.Point{0, 0}, draw.Src)
 
-	var id uint32
-	gl.GenTextures(1, &id)
+	var texture uint32
+	gl.GenTextures(1, &texture)
 	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, id)
+	gl.BindTexture(gl.TEXTURE_2D, texture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
@@ -38,9 +38,9 @@ func NewTexture(img image.Image) Texture {
 		gl.Ptr(rgba.Pix),
 	)
 
-	return Texture{id}
+	return Texture{Id: texture}
 }
 
 func (t Texture) Bind() {
-	gl.BindTexture(gl.TEXTURE_2D, t.id)
+	gl.BindTexture(gl.TEXTURE_2D, t.Id)
 }

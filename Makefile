@@ -8,4 +8,7 @@ build:
 run:
 	go run $(MAIN_FILE)
 
-.PHONY: all build run
+clean:
+	go clean
+
+.PHONY: all build run clean
