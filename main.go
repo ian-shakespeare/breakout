@@ -12,7 +12,7 @@ import (
 )
 
 const WINDOW_WIDTH = 800
-const WINDOW_HEIGHT = 600
+const WINDOW_HEIGHT = 800
 
 func init() {
 	runtime.LockOSThread()
@@ -25,6 +25,7 @@ func main() {
 	}
 	defer glfw.Terminate()
 
+	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 3)
 	glfw.WindowHint(glfw.ContextVersionMinor, 3)
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
@@ -44,24 +45,24 @@ func main() {
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
-  game := breakout.NewGame(WINDOW_WIDTH, WINDOW_HEIGHT)
+	game := breakout.NewGame(WINDOW_WIDTH, WINDOW_HEIGHT)
 
-  lastFrame := time.Now()
+	lastFrame := time.Now()
 
 	for !window.ShouldClose() {
-    now := time.Now()
-    deltaTime := now.Sub(lastFrame)
-    lastFrame = now
+		now := time.Now()
+		deltaTime := now.Sub(lastFrame)
+		lastFrame = now
 
-    game.ProcessInput(deltaTime)
-    game.Update(deltaTime)
+		game.ProcessInput(deltaTime)
+		game.Update(deltaTime)
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
-    game.Render()
+		game.Render()
 
 		window.SwapBuffers()
 		glfw.PollEvents()
 	}
 
-  game.Delete()
+	game.Delete()
 }

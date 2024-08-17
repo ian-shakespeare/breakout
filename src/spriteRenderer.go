@@ -12,10 +12,10 @@ type SpriteRenderer struct {
 
 func NewSpriteRenderer(shader Shader) SpriteRenderer {
 	vertices := []float32{
-		0.5, 0.5, 0.0, 1.0, 1.0,
-		0.5, -0.5, 0.0, 1.0, 0.0,
-		-0.5, -0.5, 0.0, 0.0, 0.0,
-		-0.5, 0.5, 0.0, 0.0, 1.0,
+		0.5, 0.5, 1.0, 1.0,
+		0.5, -0.5, 1.0, 0.0,
+		-0.5, -0.5, 0.0, 0.0,
+		-0.5, 0.5, 0.0, 1.0,
 	}
 
 	indices := []uint32{
@@ -44,11 +44,11 @@ func NewSpriteRenderer(shader Shader) SpriteRenderer {
 
 	vertAttrib := uint32(gl.GetAttribLocation(shader.Id, gl.Str("vert\x00")))
 	gl.EnableVertexAttribArray(vertAttrib)
-	gl.VertexAttribPointerWithOffset(vertAttrib, 3, gl.FLOAT, false, 5*4, 0)
+	gl.VertexAttribPointerWithOffset(vertAttrib, 2, gl.FLOAT, false, 4*4, 0)
 
 	texCoordAttrib := uint32(gl.GetAttribLocation(shader.Id, gl.Str("vertTexCoord\x00")))
 	gl.EnableVertexAttribArray(texCoordAttrib)
-	gl.VertexAttribPointerWithOffset(texCoordAttrib, 2, gl.FLOAT, false, 5*4, 3*4)
+	gl.VertexAttribPointerWithOffset(texCoordAttrib, 2, gl.FLOAT, false, 4*4, 2*4)
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 	gl.BindVertexArray(0)
@@ -56,19 +56,17 @@ func NewSpriteRenderer(shader Shader) SpriteRenderer {
 	return SpriteRenderer{shader: shader, Vao: vao}
 }
 
-func (s SpriteRenderer) Draw(texture Texture, position mgl32.Vec2, size mgl32.Vec2, rotation float32) {
+func (s SpriteRenderer) Draw(texture Texture, position mgl32.Vec2, size mgl32.Vec2, angle float32, color mgl32.Vec3) {
 	s.shader.Use()
 
 	translation := mgl32.Translate3D(position.X(), position.Y(), 0)
-	/*
-		preRot := mgl32.Translate3D(0.5*size.X(), 0.5*size.Y(), 0)
-		rot := mgl32.HomogRotate3D(45, mgl32.Vec3{0, 0, 1})
-		postRot := mgl32.Translate3D(-0.5*size.X(), -0.5*size.Y(), 0)
-	*/
+	rotation := mgl32.HomogRotate3D(angle, mgl32.Vec3{0, 0, 1})
 	scale := mgl32.Scale3D(size.X(), size.Y(), 1)
 
-	model := mgl32.Ident4().Mul4(translation). /*.Mul4(preRot).Mul4(rot).Mul4(postRot)*/ Mul4(scale)
+	model := mgl32.Ident4().Mul4(translation).Mul4(rotation).Mul4(scale)
 	s.shader.SetMatrix4("model", model)
+
+	s.shader.SetVector3f("spriteColor", color)
 
 	texture.Bind()
 	gl.BindVertexArray(s.Vao)

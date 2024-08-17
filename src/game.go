@@ -14,6 +14,7 @@ type (
 		width    uint32
 		height   uint32
 		renderer SpriteRenderer
+		level    Level
 	}
 )
 
@@ -30,9 +31,13 @@ func NewGame(width uint32, height uint32) Game {
 	}
 	shader.Use()
 
-	if _, err := LoadTexture("assets/textures/awesomeface.png", "awesomeface"); err != nil {
+	if _, err := LoadTexture("assets/textures/block.png", "block"); err != nil {
 		panic(err)
 	}
+	if _, err := LoadTexture("assets/textures/gray.png", "background"); err != nil {
+		panic(err)
+	}
+
 	shader.SetInteger("tex", 0)
 	gl.ActiveTexture(gl.TEXTURE0)
 
@@ -41,7 +46,12 @@ func NewGame(width uint32, height uint32) Game {
 
 	renderer := NewSpriteRenderer(shader)
 
-	return Game{width, height, renderer}
+	level, err := LoadLevel("assets/levels/default.lvl", width, height/2)
+	if err != nil {
+		panic(err)
+	}
+
+	return Game{width, height, renderer, level}
 }
 
 func (g Game) ProcessInput(deltaTime time.Duration) {
@@ -51,8 +61,17 @@ func (g Game) Update(deltaTime time.Duration) {
 }
 
 func (g Game) Render() {
-	texture := GetTexture("awesomeface")
-	g.renderer.Draw(texture, mgl32.Vec2{100, 100}, mgl32.Vec2{200, 200}, 0)
+	background := GetTexture("background")
+	screenWidth := float32(g.width)
+	screenHeight := float32(g.height)
+	g.renderer.Draw(
+		background,
+		mgl32.Vec2{screenWidth / 2, screenHeight / 2},
+		mgl32.Vec2{screenWidth, screenHeight},
+		0,
+		mgl32.Vec3{0.8, 0.1, 0.9},
+	)
+	g.level.Draw(&g.renderer)
 }
 
 func (g Game) Delete() {
