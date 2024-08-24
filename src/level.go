@@ -42,9 +42,11 @@ func LoadLevel(filename string, width uint32, height uint32) (Level, error) {
 	return tileDataToLevel(tileData, width, height), nil
 }
 
-func (l Level) Draw(renderer *SpriteRenderer) {
+func (l *Level) Draw(renderer *SpriteRenderer) {
 	for _, brick := range l.bricks {
-		brick.Draw(renderer)
+		if !brick.Destroyed {
+			brick.Draw(renderer)
+		}
 	}
 }
 
@@ -72,6 +74,12 @@ func tileDataToLevel(tileData [][]uint32, levelWidth uint32, levelHeight uint32)
 				break
 			case 3:
 				color = mgl32.Vec3{0.2, 0.4, 1.0}
+				break
+			case 4:
+				color = mgl32.Vec3{1.0, 0.2, 1.0}
+				break
+			case 5:
+				color = mgl32.Vec3{1.0, 1.0, 0.2}
 				break
 			}
 
