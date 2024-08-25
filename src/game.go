@@ -1,6 +1,8 @@
 package breakout
 
 import (
+	"math"
+	"sync"
 	"time"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
@@ -8,32 +10,30 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 )
 
+type GameState uint32
+
 const (
 	GAME_ACTIVE GameState = 0
 	GAME_MENU   GameState = 1
 	GAME_WIN    GameState = 2
 
 	PLAYER_VELOCITY float32 = 1
-	BALL_RADIUS     float32 = 25
+	BALL_RADIUS     float32 = 12.5
 )
 
 var INITIAL_BALL_VELOCITY mgl32.Vec2 = mgl32.Vec2{0.5, -0.350}
 
-type (
-	GameState uint32
-
-	Game struct {
-		State        GameState
-		Keys         []bool
-		width        uint32
-		height       uint32
-		renderer     SpriteRenderer
-		levels       []Level
-		currentLevel uint32
-		player       Entity
-		ball         Ball
-	}
-)
+type Game struct {
+	State        GameState
+	Keys         []bool
+	width        uint32
+	height       uint32
+	renderer     SpriteRenderer
+	levels       []Level
+	currentLevel uint32
+	player       Entity
+	ball         Ball
+}
 
 func NewGame(width uint32, height uint32) Game {
 	shader, err := LoadShader("assets/shaders/sprite.vert", "assets/shaders/sprite.frag", "sprite")
@@ -45,14 +45,17 @@ func NewGame(width uint32, height uint32) Game {
 	if _, err := LoadTexture("assets/textures/block.png", "block"); err != nil {
 		panic(err)
 	}
-	if _, err := LoadTexture("assets/textures/gray.png", "background"); err != nil {
+	if _, err := LoadTexture("assets/textures/block_solid.png", "block_solid"); err != nil {
+		panic(err)
+	}
+	if _, err := LoadTexture("assets/textures/background.jpg", "background"); err != nil {
 		panic(err)
 	}
 	paddle, err := LoadTexture("assets/textures/paddle.png", "paddle")
 	if err != nil {
 		panic(err)
 	}
-	face, err := LoadTexture("assets/textures/awesomeface.png", "awesomeface")
+	awesomeface, err := LoadTexture("assets/textures/awesomeface.png", "awesomeface")
 	if err != nil {
 		panic(err)
 	}
@@ -91,33 +94,20 @@ func NewGame(width uint32, height uint32) Game {
 		Keys[i] = false
 	}
 
-	playerSize := mgl32.Vec2{0.2 * float32(width), 0.1 * float32(height)}
+	playerSize := mgl32.Vec2{0.2 * float32(width), 0.05 * float32(height)}
 	player := Entity{
 		Position:  mgl32.Vec2{0.5 * float32(width), float32(height) - 0.5*playerSize.Y()},
 		Size:      playerSize,
 		Velocity:  mgl32.Vec2{0, 0},
-		Color:     mgl32.Vec3{1.0, 0.6, 0.1},
+		Color:     mgl32.Vec3{1, 1, 1},
 		Angle:     0,
 		IsSolid:   true,
 		Destroyed: false,
 		Sprite:    paddle,
 	}
 
-	ballPosition := player.Position.Add(mgl32.Vec2{0, -BALL_RADIUS * 2})
-	ball := NewBall(
-		Entity{
-			Position:  ballPosition,
-			Size:      mgl32.Vec2{BALL_RADIUS, BALL_RADIUS},
-			Velocity:  INITIAL_BALL_VELOCITY,
-			Color:     mgl32.Vec3{1, 1, 1},
-			Angle:     0,
-			IsSolid:   true,
-			Destroyed: false,
-			Sprite:    face,
-		},
-		BALL_RADIUS,
-		true,
-	)
+	ballPosition := player.Position.Sub(mgl32.Vec2{0, (0.5 * player.Size.Y()) + 2*BALL_RADIUS})
+	ball := NewBall(ballPosition, BALL_RADIUS, INITIAL_BALL_VELOCITY, awesomeface)
 
 	return Game{State, Keys, width, height, renderer, levels, currentLevel, player, ball}
 }
@@ -160,15 +150,17 @@ func (g *Game) Update(deltaTime time.Duration) {
 
 	g.ball.Move(deltaTime, g.width)
 
-	for i := 0; i < len(g.levels[g.currentLevel].bricks); i += 1 {
-		brick := &g.levels[g.currentLevel].bricks[i]
-
-		if !brick.Destroyed {
-			if g.ball.Collides(brick) {
-				brick.Destroyed = true
-			}
-		}
+	if g.ball.entity.Position.Y() >= float32(g.height) {
+		g.levels[g.currentLevel].Reset()
+		g.resetPlayer()
+		return
 	}
+
+	wg := sync.WaitGroup{}
+
+	go g.handleCollisions(&wg)
+
+	wg.Wait()
 }
 
 func (g *Game) Render() {
@@ -180,7 +172,7 @@ func (g *Game) Render() {
 		mgl32.Vec2{screenWidth / 2, screenHeight / 2},
 		mgl32.Vec2{screenWidth, screenHeight},
 		0,
-		mgl32.Vec3{0.8, 0.1, 0.9},
+		mgl32.Vec3{1, 1, 1},
 	)
 	g.levels[g.currentLevel].Draw(&g.renderer)
 	g.player.Draw(&g.renderer)
@@ -189,4 +181,75 @@ func (g *Game) Render() {
 
 func (g *Game) Delete() {
 	g.renderer.Delete()
+}
+
+func (g *Game) resetPlayer() {
+	player := Entity{
+		Position:  mgl32.Vec2{0.5 * float32(g.width), float32(g.height) - 0.5*g.player.Size.Y()},
+		Size:      g.player.Size,
+		Velocity:  mgl32.Vec2{0, 0},
+		Color:     g.player.Color,
+		Angle:     0,
+		IsSolid:   true,
+		Destroyed: false,
+		Sprite:    g.player.Sprite,
+	}
+	g.player = player
+
+	ballPosition := player.Position.Sub(mgl32.Vec2{0, player.Size.Y() + 2*BALL_RADIUS})
+	g.ball.Reset(ballPosition, INITIAL_BALL_VELOCITY)
+}
+
+func (g *Game) handleCollisions(wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
+
+	for i := 0; i < len(g.levels[g.currentLevel].bricks); i += 1 {
+		brick := &g.levels[g.currentLevel].bricks[i]
+
+		if !brick.Destroyed {
+			collision := g.ball.Collides(brick)
+			if !collision.Collided {
+				continue
+			}
+
+			if !brick.IsSolid {
+				brick.Destroyed = true
+			}
+
+			if collision.Direction == LEFT || collision.Direction == RIGHT {
+				g.ball.entity.InvertXVelocity()
+				penetration := g.ball.radius - float32(math.Abs(float64(collision.Difference.X())))
+				if collision.Direction == LEFT {
+					g.ball.entity.SetX(g.ball.entity.Position.X() + penetration)
+				} else {
+					g.ball.entity.SetX(g.ball.entity.Position.X() - penetration)
+				}
+			} else {
+				g.ball.entity.InvertYVelocity()
+				penetration := g.ball.radius - float32(math.Abs(float64(collision.Difference.Y())))
+				if collision.Direction == UP {
+					g.ball.entity.SetY(g.ball.entity.Position.Y() - penetration)
+				} else {
+					g.ball.entity.SetY(g.ball.entity.Position.Y() + penetration)
+				}
+			}
+		}
+	}
+
+	paddleCollision := g.ball.Collides(&g.player)
+	if paddleCollision.Collided {
+		halfWidth := 0.5 * g.player.Size.X()
+		center := g.player.Position.X() + halfWidth
+		distance := (g.ball.entity.Position.X() + g.ball.radius) - center
+		percentage := distance / halfWidth
+
+		strength := float32(2)
+		oldVelocity := g.ball.entity.Velocity
+		g.ball.entity.Velocity = mgl32.Vec2{
+			INITIAL_BALL_VELOCITY.X() * percentage * strength,
+			-1 * float32(math.Abs(float64(g.ball.entity.Velocity.Y()))),
+		}
+		g.ball.entity.Velocity = g.ball.entity.Velocity.Normalize().Mul(oldVelocity.Len())
+	}
 }

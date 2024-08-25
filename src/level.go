@@ -50,51 +50,64 @@ func (l *Level) Draw(renderer *SpriteRenderer) {
 	}
 }
 
+func (l *Level) Reset() {
+	for i := 0; i < len(l.bricks); i += 1 {
+		brick := &l.bricks[i]
+
+		brick.Destroyed = false
+	}
+}
+
 func tileDataToLevel(tileData [][]uint32, levelWidth uint32, levelHeight uint32) Level {
 	height := len(tileData)
 	width := len(tileData[0])
 
-	brickWidth := float32(levelWidth) / float32(width)
-	brickHeight := float32(levelHeight) / float32(height)
-	brickTexture := GetTexture("block")
+	blockWidth := float32(levelWidth) / float32(width)
+	blockHeight := float32(levelHeight) / float32(height)
+	blockSprite := GetTexture("block")
+	solidBlockSprite := GetTexture("block_solid")
 
 	bricks := make([]Entity, 0)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			var color mgl32.Vec3
+			solid := false
+			sprite := blockSprite
 
 			switch tileData[y][x] {
 			case 0:
 				continue
 			case 1:
-				color = mgl32.Vec3{1.0, 0.25, 0.2}
+				color = mgl32.Vec3{0.8, 0.8, 0.7}
+				solid = true
+				sprite = solidBlockSprite
 				break
 			case 2:
-				color = mgl32.Vec3{0.2, 1.0, 0.4}
+				color = mgl32.Vec3{0.2, 0.6, 1.0}
 				break
 			case 3:
-				color = mgl32.Vec3{0.2, 0.4, 1.0}
+				color = mgl32.Vec3{0.0, 0.7, 0.0}
 				break
 			case 4:
-				color = mgl32.Vec3{1.0, 0.2, 1.0}
+				color = mgl32.Vec3{0.8, 0.8, 0.4}
 				break
 			case 5:
-				color = mgl32.Vec3{1.0, 1.0, 0.2}
+				color = mgl32.Vec3{1.0, 0.5, 0.0}
 				break
 			}
 
-			halfWidth := 0.5 * brickWidth
-			halfHeight := 0.5 * brickHeight
+			halfWidth := 0.5 * blockWidth
+			halfHeight := 0.5 * blockHeight
 
 			bricks = append(bricks, Entity{
-				Position:  mgl32.Vec2{brickWidth*float32(x) + halfWidth, brickHeight*float32(y) + halfHeight},
-				Size:      mgl32.Vec2{brickWidth, brickHeight},
+				Position:  mgl32.Vec2{blockWidth*float32(x) + halfWidth, blockHeight*float32(y) + halfHeight},
+				Size:      mgl32.Vec2{blockWidth, blockHeight},
 				Velocity:  mgl32.Vec2{0, 0},
 				Color:     color,
 				Angle:     0,
-				IsSolid:   true,
+				IsSolid:   solid,
 				Destroyed: false,
-				Sprite:    brickTexture,
+				Sprite:    sprite,
 			})
 		}
 	}

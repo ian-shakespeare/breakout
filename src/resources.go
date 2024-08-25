@@ -4,6 +4,7 @@ import (
 	"image"
 	"os"
 
+	_ "image/jpeg"
 	_ "image/png"
 )
 

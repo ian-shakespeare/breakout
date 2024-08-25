@@ -13,7 +13,19 @@ type Ball struct {
 	stuck  bool
 }
 
-func NewBall(entity Entity, radius float32, stuck bool) Ball {
+func NewBall(position mgl32.Vec2, radius float32, velocity mgl32.Vec2, sprite Texture) Ball {
+	entity := Entity{
+		Position:  position,
+		Size:      mgl32.Vec2{2 * radius, 2 * radius},
+		Velocity:  velocity,
+		Color:     mgl32.Vec3{1, 1, 1},
+		Angle:     0,
+		IsSolid:   false,
+		Destroyed: false,
+		Sprite:    sprite,
+	}
+	stuck := true
+
 	return Ball{
 		entity,
 		radius,
@@ -45,18 +57,27 @@ func (b *Ball) Move(deltaTime time.Duration, windowWidth uint32) mgl32.Vec2 {
 func (b *Ball) Reset(position mgl32.Vec2, velocity mgl32.Vec2) {
 	b.entity.Position = position
 	b.entity.Velocity = velocity
+
+	b.stuck = true
 }
 
-func (b *Ball) Collides(other *Entity) bool {
+func (b *Ball) Collides(other *Entity) Collision {
 	center := b.entity.Position.Add(mgl32.Vec2{b.radius, b.radius})
-	halfExtents := mgl32.Vec2{other.Size.X(), other.Size.Y()}
-	otherCenter := other.Position
+	halfExtents := other.Size.Mul(0.5)
+	otherCenter := other.Position.Add(halfExtents)
 
 	diff := center.Sub(otherCenter)
-	clamped := mgl32.Vec2{mgl32.Clamp(diff.X(), -halfExtents.X(), halfExtents.X()), mgl32.Clamp(diff.Y(), -halfExtents.Y(), halfExtents.Y())}
+	clamped := mgl32.Vec2{
+		mgl32.Clamp(diff.X(), -halfExtents.X(), halfExtents.X()),
+		mgl32.Clamp(diff.Y(), -halfExtents.Y(), halfExtents.Y()),
+	}
 
 	closestPoint := otherCenter.Add(clamped)
 	diff = closestPoint.Sub(center)
 
-	return diff.Len() < b.radius
+	if diff.Len() <= b.radius {
+		return NewCollision(true, DirectionOf(diff), diff)
+	} else {
+		return NewCollision(false, UP, mgl32.Vec2{0, 0})
+	}
 }
