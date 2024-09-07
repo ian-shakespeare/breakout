@@ -1,8 +1,9 @@
 package breakout
 
 import (
+	"fmt"
 	"math"
-	"sync"
+	"os"
 	"time"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
@@ -138,29 +139,45 @@ func (g *Game) ProcessInput(deltaTime time.Duration) {
 		}
 	}
 
+	if g.Keys[glfw.KeyR] {
+		g.levels[g.currentLevel].Reset()
+		g.resetPlayer()
+	}
+
 	if g.Keys[glfw.KeySpace] {
 		g.ball.stuck = false
 	}
 }
 
 func (g *Game) Update(deltaTime time.Duration) {
-	if g.State != GAME_ACTIVE {
-		return
-	}
+	if g.State == GAME_WIN {
+		if int(g.currentLevel) >= len(g.levels)-1 {
+			fmt.Println("Congratulations, you won!")
+			os.Exit(0)
+		}
 
-	g.ball.Move(deltaTime, g.width)
-
-	if g.ball.entity.Position.Y() >= float32(g.height) {
 		g.levels[g.currentLevel].Reset()
+		g.currentLevel += 1
 		g.resetPlayer()
+		g.State = GAME_ACTIVE
 		return
 	}
 
-	wg := sync.WaitGroup{}
+	if g.State == GAME_ACTIVE {
+		g.handleCollisions()
+		if g.ball.entity.Position.Y() >= float32(g.height) {
+			g.levels[g.currentLevel].Reset()
+			g.resetPlayer()
+			return
+		} else if Every(g.levels[g.currentLevel].bricks, func(brick Entity) bool {
+			return brick.IsSolid || brick.Destroyed
+		}) {
+			g.State = GAME_WIN
+			return
+		}
 
-	go g.handleCollisions(&wg)
-
-	wg.Wait()
+		g.ball.Move(deltaTime, g.width)
+	}
 }
 
 func (g *Game) Render() {
@@ -200,10 +217,7 @@ func (g *Game) resetPlayer() {
 	g.ball.Reset(ballPosition, INITIAL_BALL_VELOCITY)
 }
 
-func (g *Game) handleCollisions(wg *sync.WaitGroup) {
-	wg.Add(1)
-	defer wg.Done()
-
+func (g *Game) handleCollisions() {
 	for i := 0; i < len(g.levels[g.currentLevel].bricks); i += 1 {
 		brick := &g.levels[g.currentLevel].bricks[i]
 

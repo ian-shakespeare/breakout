@@ -45,7 +45,6 @@ func main() {
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	game := breakout.NewGame(WINDOW_WIDTH, WINDOW_HEIGHT)
 
